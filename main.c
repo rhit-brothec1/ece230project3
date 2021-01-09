@@ -96,7 +96,7 @@ void setup()
     Switch_init();
 
     MAP_SysTick_enableModule();
-    MAP_SysTick_setPeriod(3017000);
+    MAP_SysTick_setPeriod(3000000);
 
     /* Remapping  TACCR0 to P2.4 */
     MAP_PMAP_configurePorts((const uint8_t*) port_mapping, PMAP_P2MAP, 1,
@@ -168,9 +168,7 @@ void play()
             }
         }
         noteIndex = (noteIndex + 1) % NOTECNT;
-
     }
-    //1509000
 }
 
 /*!
