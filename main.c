@@ -69,7 +69,7 @@ const uint8_t port_mapping[] = {
 const Timer_A_UpModeConfig upConfig = {
 TIMER_A_CLOCKSOURCE_SMCLK,                      // SMCLK Clock Source
         TIMER_A_CLOCKSOURCE_DIVIDER_3,          // SMCLK/3 = 12MHz
-        NOTEA4,                                // Note tick period TODO change?
+        NOTEG3,                                 // Note tick period
         TIMER_A_TAIE_INTERRUPT_DISABLE,         // Disable Timer interrupt
         TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE,    // Disable CCR0 interrupt
         TIMER_A_DO_CLEAR                        // Clear value
@@ -80,7 +80,7 @@ const Timer_A_CompareModeConfig compareConfig_PWM1 = {
 TIMER_A_CAPTURECOMPARE_REGISTER_0,                  // Use CCR0
         TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
         TIMER_A_OUTPUTMODE_TOGGLE,                  // Toggle output bit
-        NOTEA4                                     // Duty Cycle TODO change?
+        NOTEG3                                      // Duty Cycle
         };
 
 /*!
@@ -96,7 +96,7 @@ void setup()
     Switch_init();
 
     MAP_SysTick_enableModule();
-    MAP_SysTick_setPeriod(1509000);
+    MAP_SysTick_setPeriod(3017000);
 
     /* Remapping  TACCR0 to P2.4 */
     MAP_PMAP_configurePorts((const uint8_t*) port_mapping, PMAP_P2MAP, 1,
@@ -137,10 +137,26 @@ void play()
     MAP_Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
     while (1)
     {
-        // 500ms beat
+        MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
+        TIMER_A_CAPTURECOMPARE_REGISTER_0,
+                                    noteHalfPeriod[noteIndex]);
         while (((SysTick->CTRL) & SysTick_CTRL_COUNTFLAG_Msk) == 0)
         {
-            // TOOD loop for 120ms
+            if (Switch_pressed())
+            {
+                // Turn off speaker
+                MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
+                TIMER_A_CAPTURECOMPARE_REGISTER_0,
+                                            0);
+                MAP_SysTick_disableModule();
+                return;
+            }
+        }
+        MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
+        TIMER_A_CAPTURECOMPARE_REGISTER_0,
+                                    0);
+        while (((SysTick->CTRL) & SysTick_CTRL_COUNTFLAG_Msk) == 0)
+        {
             if (Switch_pressed())
             {
                 // Turn off speaker
@@ -153,35 +169,6 @@ void play()
         }
         noteIndex = (noteIndex + 1) % NOTECNT;
 
-        volatile uint32_t delay = 0;
-        // play note for 120ms
-        MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
-        TIMER_A_CAPTURECOMPARE_REGISTER_0,
-                                    noteHalfPeriod[noteIndex]);
-        for (delay = 5000; delay > 0; delay--)
-        {
-            if (Switch_pressed())
-            {
-                // Turn off speaker
-                MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
-                TIMER_A_CAPTURECOMPARE_REGISTER_0,
-                                            0);
-                return;
-            }
-        }
-
-        // turn off speaker
-        MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
-        TIMER_A_CAPTURECOMPARE_REGISTER_0,
-                                    0);
-        // finish beat 500ms total
-        for (delay = 50000; delay > 0; delay--)
-        {
-            if (Switch_pressed())
-            {
-                return;
-            }
-        }
     }
     //1509000
 }
