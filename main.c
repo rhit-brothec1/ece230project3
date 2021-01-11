@@ -30,7 +30,7 @@
 #include "Switch.h"
 #include "Music.h"
 
-int noteIndex = 0;
+int noteIndex = -1;
 
 #define NOTECNT 48
 const uint16_t noteHalfPeriod[NOTECNT] = { NOTEG3, NOTEG3, NOTED4, NOTED4,
@@ -61,27 +61,37 @@ NOTEE4,
 /* Port mapper configuration register */
 const uint8_t port_mapping[] = {
 //Port P2:
-        PMAP_NONE, PMAP_NONE, PMAP_NONE, PMAP_NONE, PMAP_TA0CCR0A, PMAP_NONE,
+        PMAP_NONE,
+        PMAP_NONE,
+        PMAP_NONE, PMAP_NONE, PMAP_TA0CCR0A, PMAP_NONE,
         PMAP_NONE,
         PMAP_NONE };
 
-/* Timer_A Up Configuration Parameter */
+///* Timer_A Up Configuration Parameter */
 const Timer_A_UpModeConfig upConfig = {
-TIMER_A_CLOCKSOURCE_SMCLK,                      // SMCLK Clock Source
-        TIMER_A_CLOCKSOURCE_DIVIDER_3,          // SMCLK/3 = 12MHz
-        NOTEG3,                                 // Note tick period
-        TIMER_A_TAIE_INTERRUPT_DISABLE,         // Disable Timer interrupt
-        TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE,    // Disable CCR0 interrupt
-        TIMER_A_DO_CLEAR                        // Clear value
+TIMER_A_CLOCKSOURCE_SMCLK,                          // SMCLK Clock Source
+        TIMER_A_CLOCKSOURCE_DIVIDER_3,              // SMCLK/3 = 12MHz
+        80000,                                     // Tick period
+        TIMER_A_TAIE_INTERRUPT_DISABLE,             // Disable Timer interrupt
+        TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE,        // Disable CCR0 interrupt
+        TIMER_A_DO_CLEAR                            // Clear value
         };
 
-/* Timer_A Compare Configuration Parameter  (PWM1) */
-const Timer_A_CompareModeConfig compareConfig_PWM1 = {
-TIMER_A_CAPTURECOMPARE_REGISTER_0,                  // Use CCR0
-        TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
+// Timer_A0 PWM config for speaker, initialized to off
+const Timer_A_PWMConfig compareConfig_PWM = {
+TIMER_A_CLOCKSOURCE_SMCLK,                          // SMCLK Clock Source
+        TIMER_A_CLOCKSOURCE_DIVIDER_3,              // SMCLK/3 = 12MHz
+        0,                                          // Tick period
+        TIMER_A_CAPTURECOMPARE_REGISTER_0,          // Use CCR0
         TIMER_A_OUTPUTMODE_TOGGLE,                  // Toggle output bit
-        NOTEG3                                      // Duty Cycle
+        0                                           // Duty Cycle
         };
+
+const Timer_A_CompareModeConfig compareConfig_SET = {
+TIMER_A_CAPTURECOMPARE_REGISTER_1,                  // Use CCR1
+        TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
+        TIMER_A_OUTPUTMODE_SET,                     // Set output bit
+        50 };
 
 /*!
  * \brief This function sets up the device
@@ -98,7 +108,7 @@ void setup()
     MAP_SysTick_enableModule();
     MAP_SysTick_setPeriod(3000000);
 
-    /* Remapping  TACCR0 to P2.4 */
+    // Remapping  TACCR0 to P2.4
     MAP_PMAP_configurePorts((const uint8_t*) port_mapping, PMAP_P2MAP, 1,
     PMAP_DISABLE_RECONFIGURATION);
 
@@ -107,7 +117,7 @@ void setup()
             GPIO_PIN4,
             GPIO_PRIMARY_MODULE_FUNCTION);
 
-    /* Configuring pins for peripheral/crystal usage and LED for output */
+    // Configuring pins for peripheral/crystal usage and LED for output
     MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(
             GPIO_PORT_PJ,
             GPIO_PIN3 | GPIO_PIN2,
@@ -121,15 +131,18 @@ void setup()
     MAP_FlashCtl_setWaitState(FLASH_BANK1, 2);
     CS_startHFXT(false);
 
-    /* Initializing MCLK and SMCLK to HFXT (effectively 12MHz) */
+    // Initializing MCLK and SMCLK to HFXT (effectively 12MHz)
     MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
     MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
 
-    /* Initialize compare registers to generate PWM1 */
-    MAP_Timer_A_initCompare(TIMER_A0_BASE, &compareConfig_PWM1);
+    // Initialize compare registers to generate PWM1
+//    MAP_Timer_A_initCompare(TIMER_A0_BASE, &compareConfig_PWM1);
+    MAP_Timer_A_initCompare(TIMER_A1_BASE, &compareConfig_SET);
 
-    /* Configuring Timer_A1 for UpDown Mode and starting */
-    MAP_Timer_A_configureUpMode(TIMER_A0_BASE, &upConfig);
+    // Configuring Timer_A0 for PWM Mode
+//    MAP_Timer_A_configureUpMode(TIMER_A0_BASE, &upConfig);
+    MAP_Timer_A_generatePWM(TIMER_A0_BASE, &compareConfig_PWM);
+    MAP_Timer_A_configureUpMode(TIMER_A1_BASE, &upConfig);
 }
 
 void play()
@@ -137,36 +150,42 @@ void play()
     MAP_Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
     while (1)
     {
+
+//        MAP_SysTick_setPeriod(3000000);
+        // Play note for 250ms
         MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
         TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                     noteHalfPeriod[noteIndex]);
         while (((SysTick->CTRL) & SysTick_CTRL_COUNTFLAG_Msk) == 0)
         {
+            // Check for S2 press
             if (Switch_pressed())
             {
                 // Turn off speaker
                 MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
                 TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                             0);
-                MAP_SysTick_disableModule();
                 return;
             }
         }
+        // Turn off speaker
         MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
         TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                     0);
+//        MAP_SysTick_setPeriod(1 * 3000000);
         while (((SysTick->CTRL) & SysTick_CTRL_COUNTFLAG_Msk) == 0)
         {
+            // Check for S2 press
             if (Switch_pressed())
             {
                 // Turn off speaker
-                MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
-                TIMER_A_CAPTURECOMPARE_REGISTER_0,
-                                            0);
-                MAP_SysTick_disableModule();
+//                MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
+//                TIMER_A_CAPTURECOMPARE_REGISTER_0,
+//                                            0);
                 return;
             }
         }
+
         noteIndex = (noteIndex + 1) % NOTECNT;
     }
 }
@@ -175,32 +194,29 @@ void play()
  * \brief This function debounces switch pressed
  *
  * This function loads a count-down value for a delay.
- * Delay is ~3.337ms
+ * Delay is 5ms
  *
  * \return None
  */
 void debounce()
 {
-    int delay = 1000;
-    while (delay)
-    {
-        delay--;
-    }
+    MAP_Timer_A_startCounter(TIMER_A1_BASE, TIMER_A_UP_MODE);
+    // Wait for 5ms debounce
+    while ((TIMER_A1->CCTL[1]) & (1 << 2) == 0)
+        ;
 }
 
 void loop()
 {
-    // Wait for S2 press and release
+// Wait for S2 press and release
     while (!Switch_pressed())
         ;
     debounce();
     while (Switch_pressed())
         ;
     debounce();
-    MAP_SysTick_enableModule();
     play();
-    MAP_SysTick_disableModule();
-    // Wait until S2 is released before looping
+// Wait until S2 is released before looping
     while (Switch_pressed())
         ;
 }
