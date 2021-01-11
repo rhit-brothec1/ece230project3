@@ -33,6 +33,7 @@
 int noteIndex = -1;
 
 #define NOTECNT 48
+
 const uint16_t noteHalfPeriod[NOTECNT] = { NOTEG3, NOTEG3, NOTED4, NOTED4,
 NOTEE4,
                                            NOTEE4, NOTED4, REST,
@@ -57,14 +58,19 @@ NOTEE4,
                                            NOTEA3,
                                            NOTEG3, REST };
 
+const uint16_t noteBeat[NOTECNT] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                     1, 1, 1, 1, 1, 1 };
+
 //![Simple PMAP Config]
 /* Port mapper configuration register */
 const uint8_t port_mapping[] = {
 //Port P2:
         PMAP_NONE,
         PMAP_NONE,
-        PMAP_NONE, PMAP_NONE, PMAP_TA0CCR0A, PMAP_NONE,
-        PMAP_NONE,
+        PMAP_NONE, PMAP_NONE, PMAP_NONE, PMAP_NONE,
+        PMAP_TA0CCR0A,
         PMAP_NONE };
 
 ///* Timer_A Up Configuration Parameter */
@@ -108,13 +114,13 @@ void setup()
     MAP_SysTick_enableModule();
     MAP_SysTick_setPeriod(3000000);
 
-    // Remapping  TACCR0 to P2.4
+    // Remapping  TACCR0 to P2.6
     MAP_PMAP_configurePorts((const uint8_t*) port_mapping, PMAP_P2MAP, 1,
     PMAP_DISABLE_RECONFIGURATION);
 
     MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(
             GPIO_PORT_P2,
-            GPIO_PIN4,
+            GPIO_PIN6,
             GPIO_PRIMARY_MODULE_FUNCTION);
 
     // Configuring pins for peripheral/crystal usage and LED for output
@@ -136,11 +142,9 @@ void setup()
     MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
 
     // Initialize compare registers to generate PWM1
-//    MAP_Timer_A_initCompare(TIMER_A0_BASE, &compareConfig_PWM1);
     MAP_Timer_A_initCompare(TIMER_A1_BASE, &compareConfig_SET);
 
     // Configuring Timer_A0 for PWM Mode
-//    MAP_Timer_A_configureUpMode(TIMER_A0_BASE, &upConfig);
     MAP_Timer_A_generatePWM(TIMER_A0_BASE, &compareConfig_PWM);
     MAP_Timer_A_configureUpMode(TIMER_A1_BASE, &upConfig);
 }
@@ -150,21 +154,16 @@ void play()
     MAP_Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
     while (1)
     {
-
-//        MAP_SysTick_setPeriod(3000000);
-        // Play note for 250ms
+        // Play note for its duration
         MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
         TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                     noteHalfPeriod[noteIndex]);
+        MAP_SysTick_setPeriod((noteBeat[noteIndex] - 1) * 6000000 + 3000000);
         while (((SysTick->CTRL) & SysTick_CTRL_COUNTFLAG_Msk) == 0)
         {
             // Check for S2 press
             if (Switch_pressed())
             {
-                // Turn off speaker
-                MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
-                TIMER_A_CAPTURECOMPARE_REGISTER_0,
-                                            0);
                 return;
             }
         }
@@ -172,20 +171,15 @@ void play()
         MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
         TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                     0);
-//        MAP_SysTick_setPeriod(1 * 3000000);
         while (((SysTick->CTRL) & SysTick_CTRL_COUNTFLAG_Msk) == 0)
         {
             // Check for S2 press
             if (Switch_pressed())
             {
-                // Turn off speaker
-//                MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
-//                TIMER_A_CAPTURECOMPARE_REGISTER_0,
-//                                            0);
                 return;
             }
         }
-
+        MAP_SysTick_setPeriod(3000000);
         noteIndex = (noteIndex + 1) % NOTECNT;
     }
 }
@@ -216,9 +210,13 @@ void loop()
         ;
     debounce();
     play();
+    MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
+    TIMER_A_CAPTURECOMPARE_REGISTER_0,
+                                0);
 // Wait until S2 is released before looping
     while (Switch_pressed())
         ;
+    debounce();
 }
 
 int main(void)
