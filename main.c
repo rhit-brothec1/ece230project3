@@ -14,7 +14,7 @@
  *          | |                  |
  *          --|RST               |
  *            |                  |
- *       S2-->|P1.4          P2.4|--> CCR0
+ *       S2-->|P1.4          P2.6|--> TA0CCR0
  *            |                  |
  *            |                  |
  *            |                  |
@@ -29,39 +29,48 @@
 
 #include "Switch.h"
 #include "Music.h"
+#include "Timers.h"
 
-int noteIndex = -1;
+int noteIndex = 0;
 
 #define NOTECNT 48
 
-const uint16_t noteHalfPeriod[NOTECNT] = { NOTEG3, NOTEG3, NOTED4, NOTED4,
-NOTEE4,
-                                           NOTEE4, NOTED4, REST,
-                                           NOTEC4,
-                                           NOTEC4, NOTEB3, NOTEB3, NOTEA3,
-                                           NOTEA3,
-                                           NOTEG3, REST,
-                                           NOTED4,
-                                           NOTED4, NOTEC4, NOTEC4, NOTEB3,
-                                           NOTEB3,
-                                           NOTEA3, REST,
-                                           NOTED4,
-                                           NOTED4, NOTEC4, NOTEC4, NOTEB3,
-                                           NOTEB3,
-                                           NOTEA3, REST,
-                                           NOTEG3,
-                                           NOTEG3, NOTED4, NOTED4, NOTEE4,
+const uint16_t noteHalfPeriod[NOTECNT] = {
+NOTEG3,
+                                           NOTEC4, NOTEC4, NOTEC4, NOTED4,
                                            NOTEE4,
-                                           NOTED4, REST,
+                                           NOTEE4, NOTEE4, NOTED4,
                                            NOTEC4,
-                                           NOTEC4, NOTEB3, NOTEB3, NOTEA3,
-                                           NOTEA3,
-                                           NOTEG3, REST };
+                                           NOTED4, NOTEE4, NOTEC4,
+                                           NOTEE4,
+                                           NOTEE4, NOTEF4, NOTEG4,
+                                           NOTEG4,
+                                           NOTEF4, NOTEE4, NOTEF4,
+                                           NOTEG4,
+                                           NOTEE4, NOTEC4, NOTEC4,
+                                           NOTED4,
+                                           NOTEE4, NOTEE4,
+                                           NOTED4,
+                                           NOTEC4, NOTED4, NOTEE4,
+                                           NOTEC4,
+                                           NOTEG3, NOTEG3, NOTEC4,
+                                           NOTEC4,
+                                           NOTEC4, NOTED4, NOTEE4,
+                                           NOTEE4,
+                                           NOTEE4, NOTED4, NOTEC4, NOTED4,
+                                           NOTEE4,
+                                           NOTEC4, REST };
 
-const uint16_t noteBeat[NOTECNT] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                                     1, 1, 1, 1, 1, 1 };
+const uint16_t noteBeat[NOTECNT] = { 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 4, 2,
+                                     1, 1, 3, 1, 1, 1, 1, 1, 4, 2, 1, 1, 3, 1,
+                                     1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1,
+                                     1, 1, 1, 1, 7, 1 };
+
+//const uint16_t noteHalfPeriod[NOTECNT] = { NOTEE3, NOTEC3, NOTEB2, NOTEE3,
+//NOTEC3,
+//                                           NOTEB2, NOTEE3, NOTEC3, NOTEB2 };
+//
+//const uint16_t noteBeat[NOTECNT] = { 4, 2, 2, 4, 2, 2, 4, 2, 2 };
 
 //![Simple PMAP Config]
 /* Port mapper configuration register */
@@ -72,32 +81,6 @@ const uint8_t port_mapping[] = {
         PMAP_NONE, PMAP_NONE, PMAP_NONE, PMAP_NONE,
         PMAP_TA0CCR0A,
         PMAP_NONE };
-
-///* Timer_A Up Configuration Parameter */
-const Timer_A_UpModeConfig upConfig = {
-TIMER_A_CLOCKSOURCE_SMCLK,                          // SMCLK Clock Source
-        TIMER_A_CLOCKSOURCE_DIVIDER_3,              // SMCLK/3 = 12MHz
-        80000,                                     // Tick period
-        TIMER_A_TAIE_INTERRUPT_DISABLE,             // Disable Timer interrupt
-        TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE,        // Disable CCR0 interrupt
-        TIMER_A_DO_CLEAR                            // Clear value
-        };
-
-// Timer_A0 PWM config for speaker, initialized to off
-const Timer_A_PWMConfig compareConfig_PWM = {
-TIMER_A_CLOCKSOURCE_SMCLK,                          // SMCLK Clock Source
-        TIMER_A_CLOCKSOURCE_DIVIDER_3,              // SMCLK/3 = 12MHz
-        0,                                          // Tick period
-        TIMER_A_CAPTURECOMPARE_REGISTER_0,          // Use CCR0
-        TIMER_A_OUTPUTMODE_TOGGLE,                  // Toggle output bit
-        0                                           // Duty Cycle
-        };
-
-const Timer_A_CompareModeConfig compareConfig_SET = {
-TIMER_A_CAPTURECOMPARE_REGISTER_1,                  // Use CCR1
-        TIMER_A_CAPTURECOMPARE_INTERRUPT_DISABLE,   // Disable CCR interrupt
-        TIMER_A_OUTPUTMODE_SET,                     // Set output bit
-        50 };
 
 /*!
  * \brief This function sets up the device
@@ -111,10 +94,15 @@ void setup()
 {
     Switch_init();
 
-    MAP_SysTick_enableModule();
-    MAP_SysTick_setPeriod(3000000);
+    /* Configuring P1.0 as output */
+    MAP_GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);
+    MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
 
-    // Remapping  TACCR0 to P2.6
+    Timers_init();
+
+    MAP_Interrupt_enableMaster();
+
+    // Remapping  TA0CCR0 to P2.6
     MAP_PMAP_configurePorts((const uint8_t*) port_mapping, PMAP_P2MAP, 1,
     PMAP_DISABLE_RECONFIGURATION);
 
@@ -122,98 +110,45 @@ void setup()
             GPIO_PORT_P2,
             GPIO_PIN6,
             GPIO_PRIMARY_MODULE_FUNCTION);
-
-    // Configuring pins for peripheral/crystal usage and LED for output
-    MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(
-            GPIO_PORT_PJ,
-            GPIO_PIN3 | GPIO_PIN2,
-            GPIO_PRIMARY_MODULE_FUNCTION);
-
-    CS_setExternalClockSourceFrequency(32000, 48000000);
-    /* Starting HFXT in non-bypass mode without a timeout. Before we start
-     * we have to change VCORE to 1 to support the 48MHz frequency */
-    MAP_PCM_setCoreVoltageLevel(PCM_VCORE1);
-    MAP_FlashCtl_setWaitState(FLASH_BANK0, 2);
-    MAP_FlashCtl_setWaitState(FLASH_BANK1, 2);
-    CS_startHFXT(false);
-
-    // Initializing MCLK and SMCLK to HFXT (effectively 12MHz)
-    MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
-    MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
-
-    // Initialize compare registers to generate PWM1
-    MAP_Timer_A_initCompare(TIMER_A1_BASE, &compareConfig_SET);
-
-    // Configuring Timer_A0 for PWM Mode
-    MAP_Timer_A_generatePWM(TIMER_A0_BASE, &compareConfig_PWM);
-    MAP_Timer_A_configureUpMode(TIMER_A1_BASE, &upConfig);
-}
-
-void play()
-{
-    MAP_Timer_A_startCounter(TIMER_A0_BASE, TIMER_A_UP_MODE);
-    while (1)
-    {
-        // Play note for its duration
-        MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
-        TIMER_A_CAPTURECOMPARE_REGISTER_0,
-                                    noteHalfPeriod[noteIndex]);
-        MAP_SysTick_setPeriod((noteBeat[noteIndex] - 1) * 6000000 + 3000000);
-        while (((SysTick->CTRL) & SysTick_CTRL_COUNTFLAG_Msk) == 0)
-        {
-            // Check for S2 press
-            if (Switch_pressed())
-            {
-                return;
-            }
-        }
-        // Turn off speaker
-        MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
-        TIMER_A_CAPTURECOMPARE_REGISTER_0,
-                                    0);
-        while (((SysTick->CTRL) & SysTick_CTRL_COUNTFLAG_Msk) == 0)
-        {
-            // Check for S2 press
-            if (Switch_pressed())
-            {
-                return;
-            }
-        }
-        MAP_SysTick_setPeriod(3000000);
-        noteIndex = (noteIndex + 1) % NOTECNT;
-    }
 }
 
 /*!
  * \brief This function debounces switch pressed
  *
- * This function loads a count-down value for a delay.
+ * This function loads a count-down value in TA2 CCR1 for a delay.
  * Delay is 5ms
  *
  * \return None
  */
 void debounce()
 {
-    MAP_Timer_A_startCounter(TIMER_A1_BASE, TIMER_A_UP_MODE);
-    // Wait for 5ms debounce
-    while ((TIMER_A1->CCTL[1]) & (1 << 2) == 0)
+    MAP_Timer_A_startCounter(TIMER_A2_BASE, TIMER_A_UP_MODE);
+    while ((TIMER_A2->CCTL[1]) & (1 << 2) == 0)
         ;
 }
 
+/*!
+ * \brief This function controls I/O and playing of the song
+ *
+ * This function waits for an S2 press and release, then starts playing
+ * the song. On the next S2 press, it will stop playing. Once S2 is
+ * released, it will loop.
+ *
+ * \return None
+ */
 void loop()
 {
-// Wait for S2 press and release
     while (!Switch_pressed())
         ;
     debounce();
     while (Switch_pressed())
         ;
     debounce();
-    play();
-    MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
-    TIMER_A_CAPTURECOMPARE_REGISTER_0,
-                                0);
-// Wait until S2 is released before looping
+    Timers_start();
+    while (!Switch_pressed())
+        ;
+    Timers_stop();
+    debounce();
     while (Switch_pressed())
         ;
     debounce();
@@ -221,12 +156,50 @@ void loop()
 
 int main(void)
 {
-    MAP_WDT_A_holdTimer();
-
     setup();
 
     while (1)
     {
         loop();
     }
+}
+
+/*!
+ * \brief This function handles the interrupt of TA1 CCR0
+ *
+ * This function turns on the speaker with the appropriate note.
+ *
+ *\return None
+ */
+void TA1_0_IRQHandler(void)
+{
+    MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    MAP_Timer_A_clearCaptureCompareInterrupt(TIMER_A1_BASE,
+    TIMER_A_CAPTURECOMPARE_REGISTER_0);
+    MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
+    TIMER_A_CAPTURECOMPARE_REGISTER_0,
+                                noteHalfPeriod[noteIndex]);
+    MAP_Timer_A_setCompareValue(TIMER_A1_BASE,
+    TIMER_A_CAPTURECOMPARE_REGISTER_0,
+                                BEAT);
+}
+
+/*!
+ * \brief This function handles the interrupt of TA1 CCRN
+ *
+ * This function turns off the speaker, loads the next beat into CCR0,
+ * and increments to the next note
+ */
+void TA1_N_IRQHandler(void)
+{
+    MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
+    MAP_Timer_A_clearInterruptFlag(TIMER_A1_BASE);
+    MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
+    TIMER_A_CAPTURECOMPARE_REGISTER_0,
+                                0);
+    noteIndex = (noteIndex + 1) % NOTECNT;
+    MAP_Timer_A_setCompareValue(TIMER_A1_BASE,
+    TIMER_A_CAPTURECOMPARE_REGISTER_0,
+                                noteBeat[noteIndex] * BEAT);
+
 }
