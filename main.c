@@ -33,38 +33,25 @@
 
 int noteIndex = 0;
 
-#define NOTECNT 48
+#define NOTECNT 28
 
-const uint16_t noteHalfPeriod[NOTECNT] = {
-NOTEG3,
-                                           NOTEC4, NOTEC4, NOTEC4, NOTED4,
-                                           NOTEE4,
-                                           NOTEE4, NOTEE4, NOTED4,
-                                           NOTEC4,
-                                           NOTED4, NOTEE4, NOTEC4,
-                                           NOTEE4,
-                                           NOTEE4, NOTEF4, NOTEG4,
-                                           NOTEG4,
-                                           NOTEF4, NOTEE4, NOTEF4,
-                                           NOTEG4,
-                                           NOTEE4, NOTEC4, NOTEC4,
+const uint16_t noteHalfPeriod[NOTECNT] = { NOTEC4, NOTEF4, NOTEF4, NOTEF4,
+NOTEF4,
+                                           NOTEA4, NOTEC5, NOTEA4,
+                                           NOTEF4,
+                                           NOTEG4, NOTEG4, NOTEG4, NOTEE4,
                                            NOTED4,
-                                           NOTEE4, NOTEE4,
-                                           NOTED4,
-                                           NOTEC4, NOTED4, NOTEE4,
-                                           NOTEC4,
-                                           NOTEG3, NOTEG3, NOTEC4,
-                                           NOTEC4,
-                                           NOTEC4, NOTED4, NOTEE4,
+                                           NOTEC4, NOTEC4, NOTEE4,
                                            NOTEE4,
-                                           NOTEE4, NOTED4, NOTEC4, NOTED4,
-                                           NOTEE4,
-                                           NOTEC4, REST };
+                                           NOTEE4, NOTEE4, NOTEA4,
+                                           NOTEC5,
+                                           NOTEA4, NOTEF4, NOTEG4, NOTEC4,
+                                           NOTEC4,
+                                           NOTEF4 };
 
-const uint16_t noteBeat[NOTECNT] = { 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 4, 2,
-                                     1, 1, 3, 1, 1, 1, 1, 1, 4, 2, 1, 1, 3, 1,
-                                     1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1,
-                                     1, 1, 1, 1, 7, 1 };
+const double noteBeat[NOTECNT] = { 1, 1, 0.5, 0.5, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1,
+                                   1, 1, 1, 0.5, 0.5, 1, 1, 1, 1, 2, 2, 1.5, 1,
+                                   4 };
 
 //![Simple PMAP Config]
 /* Port mapper configuration register */
@@ -182,8 +169,8 @@ void TA1_N_IRQHandler(void)
     MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
     TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                 0);
+    noteIndex = (noteIndex + 1) % NOTECNT;
     MAP_Timer_A_setCompareValue(TIMER_A1_BASE,
     TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                 noteBeat[noteIndex] * BEAT);
-    noteIndex = (noteIndex + 1) % NOTECNT;
 }
