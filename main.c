@@ -1,7 +1,7 @@
 /*
  * Author:      Cooper Brotherton
  * Date:        January 5, 2021
- * Libraries:   SysTick and GPIO from DriverLib
+ * Libraries:   GPIO from DriverLib
  */
 /******************************************************************************
  * MSP432 Project 3 ECE230 Winter 2020-2021
@@ -66,12 +66,6 @@ const uint16_t noteBeat[NOTECNT] = { 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 4, 2,
                                      1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 1,
                                      1, 1, 1, 1, 7, 1 };
 
-//const uint16_t noteHalfPeriod[NOTECNT] = { NOTEE3, NOTEC3, NOTEB2, NOTEE3,
-//NOTEC3,
-//                                           NOTEB2, NOTEE3, NOTEC3, NOTEB2 };
-//
-//const uint16_t noteBeat[NOTECNT] = { 4, 2, 2, 4, 2, 2, 4, 2, 2 };
-
 //![Simple PMAP Config]
 /* Port mapper configuration register */
 const uint8_t port_mapping[] = {
@@ -93,10 +87,6 @@ const uint8_t port_mapping[] = {
 void setup()
 {
     Switch_init();
-
-    /* Configuring P1.0 as output */
-    MAP_GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);
-    MAP_GPIO_setOutputLowOnPin(GPIO_PORT_P1, GPIO_PIN0);
 
     Timers_init();
 
@@ -173,15 +163,11 @@ int main(void)
  */
 void TA1_0_IRQHandler(void)
 {
-    MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
     MAP_Timer_A_clearCaptureCompareInterrupt(TIMER_A1_BASE,
     TIMER_A_CAPTURECOMPARE_REGISTER_0);
     MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
     TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                 noteHalfPeriod[noteIndex]);
-    MAP_Timer_A_setCompareValue(TIMER_A1_BASE,
-    TIMER_A_CAPTURECOMPARE_REGISTER_0,
-                                BEAT);
 }
 
 /*!
@@ -192,14 +178,12 @@ void TA1_0_IRQHandler(void)
  */
 void TA1_N_IRQHandler(void)
 {
-    MAP_GPIO_toggleOutputOnPin(GPIO_PORT_P1, GPIO_PIN0);
     MAP_Timer_A_clearInterruptFlag(TIMER_A1_BASE);
     MAP_Timer_A_setCompareValue(TIMER_A0_BASE,
     TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                 0);
-    noteIndex = (noteIndex + 1) % NOTECNT;
     MAP_Timer_A_setCompareValue(TIMER_A1_BASE,
     TIMER_A_CAPTURECOMPARE_REGISTER_0,
                                 noteBeat[noteIndex] * BEAT);
-
+    noteIndex = (noteIndex + 1) % NOTECNT;
 }
