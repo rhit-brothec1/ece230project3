@@ -27,12 +27,12 @@ extern void Timers_init(void)
 
     // Initializing MCLK and SMCLK with HFXT
     MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
-    MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_32);
+    MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_16);
 
     // Timer_A0 PWM config for speaker, initialized to off
     const Timer_A_PWMConfig compareConfig_PWM = {
     TIMER_A_CLOCKSOURCE_SMCLK,                          // SMCLK Clock Source
-            TIMER_A_CLOCKSOURCE_DIVIDER_1,              // SMCLK/1 = 1.5kHz
+            TIMER_A_CLOCKSOURCE_DIVIDER_1,              // SMCLK/1 = 3MHz
             0,                                          // Tick period
             TIMER_A_CAPTURECOMPARE_REGISTER_0,          // Use CCR0
             TIMER_A_OUTPUTMODE_TOGGLE,                  // Toggle output bit
@@ -42,7 +42,7 @@ extern void Timers_init(void)
     // Timer_A1 updown config
     const Timer_A_UpDownModeConfig upDownConfig = {
     TIMER_A_CLOCKSOURCE_SMCLK,                          // SMCLK Clock Source
-            TIMER_A_CLOCKSOURCE_DIVIDER_64,             // SMCLK/48 = 31.25kHz
+            TIMER_A_CLOCKSOURCE_DIVIDER_64,             // SMCLK/64 = 31.25kHz
             BEAT,                                      // 480 millisecond period
             TIMER_A_TAIE_INTERRUPT_ENABLE,             // Enable Timer interrupt
             TIMER_A_CCIE_CCR0_INTERRUPT_ENABLE,         // Enable CCR0 interrupt
@@ -52,7 +52,7 @@ extern void Timers_init(void)
     // Timer_A2 up config
     const Timer_A_UpModeConfig upConfig = {
     TIMER_A_CLOCKSOURCE_ACLK,                           // SMCLK Clock Source
-            TIMER_A_CLOCKSOURCE_DIVIDER_1,              // SMCLK/1 = 1.5MHz
+            TIMER_A_CLOCKSOURCE_DIVIDER_1,              // SMCLK/1 = 3MHz
             DEBOUNCE_DELAY,                             // 5ms Tick period
             TIMER_A_TAIE_INTERRUPT_DISABLE,           // Disable Timer interrupt
             TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE,       // Disable CCR0 interrupt

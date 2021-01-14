@@ -1,7 +1,7 @@
 /*
  * Author:      Cooper Brotherton
- * Date:        January 5, 2021
- * Libraries:   GPIO from DriverLib
+ * Date:        January 14, 2021
+ * Libraries:   GPIO and Timer A from DriverLib
  */
 /******************************************************************************
  * MSP432 Project 3 ECE230 Winter 2020-2021
@@ -35,19 +35,10 @@ int noteIndex = 0;
 
 #define NOTECNT 28
 
-const uint16_t noteHalfPeriod[NOTECNT] = { NOTEC4, NOTEF4, NOTEF4, NOTEF4,
-NOTEF4,
-                                           NOTEA4, NOTEC5, NOTEA4,
-                                           NOTEF4,
-                                           NOTEG4, NOTEG4, NOTEG4, NOTEE4,
-                                           NOTED4,
-                                           NOTEC4, NOTEC4, NOTEE4,
-                                           NOTEE4,
-                                           NOTEE4, NOTEE4, NOTEA4,
-                                           NOTEC5,
-                                           NOTEA4, NOTEF4, NOTEG4, NOTEC4,
-                                           NOTEC4,
-                                           NOTEF4 };
+const uint16_t noteHalfPeriod[NOTECNT] = { C4, F4, F4, F4, F4, A4, C5, A4, F4,
+                                           G4, G4, G4, E4, D4, C4, C4, E4, E4,
+                                           E4, E4, A4, C5, A4, F4, G4, C4, C4,
+                                           F4 };
 
 const double noteBeat[NOTECNT] = { 1, 1, 0.5, 0.5, 1, 1, 1, 1, 2, 1, 1, 2, 1, 1,
                                    1, 1, 1, 0.5, 0.5, 1, 1, 1, 1, 2, 2, 1.5, 1,
